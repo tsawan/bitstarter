@@ -28,7 +28,7 @@ var cheerio = require('cheerio');
 var rest = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
-var URL_DEFAULT = "";
+var URL_DEFAULT = "http://obscure-anchorage-6870.herokuapp.com";
 var SAVE_FILE = "local_index.html";
 
 var assertFileExists = function(infile) {
@@ -56,11 +56,7 @@ var readUrl = function(url) {
             console.error('Error: ' + util.format(response.message));
         } else {
           fs.writeFileSync(SAVE_FILE, result);
-
-          var checkJson = checkHtmlFile(SAVE_FILE, program.checks);
-          var outJson = JSON.stringify(checkJson, null, 4);
-          console.log(outJson);
-
+          processFile(SAVE_FILE, program.checks);
         }
     };
     rest.get(url).on('complete', parseFile);
@@ -91,6 +87,12 @@ var clone = function(fn) {
     return fn.bind({});
 };
 
+var processFile = function(file, checks) {
+        var checkJson = checkHtmlFile(file, checks);
+        var outJson = JSON.stringify(checkJson, null, 4);
+        console.log(outJson);
+}
+
 if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
@@ -101,9 +103,7 @@ if(require.main == module) {
         readUrl(program.url);
       }
       else {
-        var checkJson = checkHtmlFile(program.file, program.checks);
-        var outJson = JSON.stringify(checkJson, null, 4);
-        console.log(outJson);
+        processFile(program.file, program.checks);
       }
 } else {
     exports.checkHtmlFile = checkHtmlFile;
