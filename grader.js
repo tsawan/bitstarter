@@ -28,8 +28,6 @@ var cheerio = require('cheerio');
 var rest = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
-var URL_DEFAULT = "http://obscure-anchorage-6870.herokuapp.com";
-var SAVE_FILE = "local_index.html";
 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
@@ -40,7 +38,7 @@ var assertFileExists = function(infile) {
     return instr;
 };
 
-var assertUrl = function(url) {
+var assertUrlValid = function(url) {
   var instr = url.toString();
   if ( (instr.indexOf('http') == 0) || (instr.indexOf('https') == 0) )
     return instr;
@@ -55,23 +53,17 @@ var readUrl = function(url) {
         if (result instanceof Error) {
             console.error('Error: ' + util.format(response.message));
         } else {
-          fs.writeFileSync(SAVE_FILE, result);
-          processFile(SAVE_FILE, program.checks);
+          processString(result, program.checks);
         }
     };
     rest.get(url).on('complete', parseFile);
 }
 
-var cheerioHtmlFile = function(htmlfile) {
-    return cheerio.load(fs.readFileSync(htmlfile));
-};
-
 var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 
-var checkHtmlFile = function(htmlfile, checksfile) {
-    $ = cheerioHtmlFile(htmlfile);
+var checkHtml = function(checksfile) {
     var checks = loadChecks(checksfile).sort();
     var out = {};
     for(var ii in checks) {
@@ -87,17 +79,27 @@ var clone = function(fn) {
     return fn.bind({});
 };
 
+var processString = function(str, checks) {
+    $ = cheerio.load(str);
+    processHtml(checks);
+}
+
 var processFile = function(file, checks) {
-        var checkJson = checkHtmlFile(file, checks);
-        var outJson = JSON.stringify(checkJson, null, 4);
-        console.log(outJson);
+    $ = cheerio.load(fs.readFileSync(file));
+    processHtml(checks);
+}
+
+var processHtml = function(checks) {
+    var checkJson = checkHtml(checks);
+    var outJson = JSON.stringify(checkJson, null, 4);
+    console.log(outJson);
 }
 
 if(require.main == module) {
     program
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .option('-u, --url <url>', 'url to index.html', clone(assertUrl), URL_DEFAULT)
+        .option('-u, --url <url>', 'url to index.html', clone(assertUrlValid))
         .parse(process.argv);
       if (program.url) {
         readUrl(program.url);
